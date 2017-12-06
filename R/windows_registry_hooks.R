@@ -90,8 +90,8 @@ add_run_R_script_right_click_context_action <- function(force = FALSE, echo = FA
   if (!can_find_R_on_PATH() || force)
     add_R_to_path(force = force, echo = echo)
 
-  pth2launch_script <- system.file("windows/run_rscript.cmd", package = "TKutils")
-  pth2launch_script <- shQuote(normalizePath(pth2launch_script))
+  pth2launch_script <- system.file("run_rscript.cmd", package = "windows", mustWork = TRUE)
+  pth2launch_script <- shQuote(normalizePath(pth2launch_script, mustWork = TRUE))
   reg_key_data <- shQuote(p(pth2launch_script, dbl_quote("%1")))
 
   key <-
