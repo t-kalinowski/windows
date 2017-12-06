@@ -251,3 +251,91 @@ add_open_Rstudio_here_right_click_context_action <- function(echo = TRUE) {
 #   key <- dbl_quote("HKEY_CURRENT_USER\\Software\\Classes\\Folder\\shell\\Open Rstudio here\\command")
 #   add_reg_key(key, data = shQuote('rstudio.exe "%1"'), echo = TRUE, force = TRUE)
 
+add_pandoc_to_path <- function(pth_to_pandoc.exe = Sys.getenv("RSTUDIO_PANDOC"), echo = FALSE) {
+  pandoc <- normalizePath(pth_to_pandoc.exe, mustWork = TRUE)
+  current_user_path <- read_user_var_direct_from_registry("PATH")
+  new_PATH <- unique(c(current_user_path, pandoc))
+  new_user_path <- new_PATH
+
+  new_user_path <- p(new_user_path, collapse = ";")
+
+  # escape_percents
+  new_user_path <- gsub("%", '^%', new_user_path, fixed = TRUE)
+
+  # spaces need to be quoted
+  new_user_path <- gsub("(\\s+)", '"\\1"', new_user_path, perl = TRUE)
+
+
+  # cat(new_user_path)
+
+  # We use reg add instead of setx because setx truncates any chars over 1024,
+  # also, it doesn't let you easily distinguish user PATH from system PATH.
+  # the only reliable way is to query the registry
+  add_reg_key("HKCU\\Environment", value = "PATH",
+    type = "REG_EXPAND_SZ", data = new_user_path,
+    force = TRUE, echo = echo
+  )
+
+  message("\nThe user PATH variable is now:")
+  cat(pcnl(p('\t', read_user_var_direct_from_registry("PATH"))), "\n\n")
+
+  message("As a reminder, the System PATH is searched before the User PATH")
+  message("The System PATH is:")
+  cat(pcnl(p('\t', read_system_var_direct_from_registry("PATH"))), "\n\n")
+
+
+  # we need to call setx in order for a WM_SETTINGCHANGE to be broadcast.
+  # doesn't matter with what, so just reset R_home
+  # http://www.dowdandassociates.com/blog/content/howto-set-an-environment-variable-in-windows-command-line-and-registry/
+  set_R_Home_user_variable()
+}
+
+add_R_to_path <- function(force = FALSE, echo = FALSE) {
+
+
+  # we query the registry directly because we don't want variables like
+  # "%R_Home" expanded yet. Note, a user PATH is only expanded once, so you
+  # can't nest user variables. e.g. you can't add %R_PATH% and then define
+  # %R_PATH% as %R_Home%\\bin\\%R_ARCH% because %R_PATH% will not be expanded
+  # fully (or at all, really). This is different from system varialbes, which
+  # are expaned recursively.
+  current_user_path <- read_user_var_direct_from_registry("PATH")
+
+  message("\nThe current user PATH Variable:")
+  cat(pcnl(p('\t', current_user_path)), "\n\n")
+
+  message("Prepending %R_Home%\\bin\\%R_ARCH% to the PATH" )
+
+  new_user_path <- unique(c("%R_Home%\\bin\\%R_ARCH%", current_user_path ))
+  new_user_path <- p(new_user_path, collapse = ";")
+
+  # escape_percents
+  new_user_path <- gsub("%", '^%', new_user_path, fixed = TRUE)
+
+  # spaces need to be quoted
+  new_user_path <- gsub("(\\s+)", '"\\1"', new_user_path, perl = TRUE)
+
+
+  # cat(new_user_path)
+
+  # We use reg add instead of setx because setx truncates any chars over 1024,
+  # also, it doesn't let you easily distinguish user PATH from system PATH.
+  # the only reliable way is to query the registry
+  add_reg_key(
+    "HKCU\\Environment",
+    value = "PATH",
+    type = "REG_EXPAND_SZ",
+    data = new_user_path,
+    force = TRUE,
+    echo = echo
+  )
+
+  message("\nThe user PATH variable is now:")
+  cat(pcnl(p('\t', read_user_var_direct_from_registry("PATH"))), "\n\n")
+
+  message("As a reminder, the System PATH is searched before the User PATH")
+  message("The System PATH is:")
+  cat(pcnl(p('\t', read_system_var_direct_from_registry("PATH"))), "\n\n")
+
+  set_R_Home_user_variable()
+}
