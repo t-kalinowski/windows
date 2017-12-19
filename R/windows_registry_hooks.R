@@ -1,5 +1,15 @@
 
 
+
+#' @import yasp
+#' @export
+register <- function(force = TRUE) {
+  stopifnot(is_windows())
+
+  add_open_Rstudio_here_right_click_context_action(force = force)
+  add_run_R_script_right_click_context_action(force = force)
+}
+
 is_windows <- function() {
     .Platform$OS.type == "windows"
 }
@@ -83,7 +93,7 @@ can_find_R_on_PATH <- function() {
 
 
 
-#' @export
+
 add_run_R_script_right_click_context_action <- function(force = FALSE, echo = FALSE) {
   stopifnot(is_windows())
 
@@ -135,8 +145,8 @@ set_user_variable <- function(name, value, scope = c("user", "system"), echo= FA
 }
 
 
-set_R_Home_user_variable <- function(echo = FALSE) {
-  set_user_variable("R_Home", normalizePath(Sys.getenv("R_Home")), echo = echo)
+set_R_HOME_user_variable <- function(echo = FALSE) {
+  set_user_variable("R_HOME", normalizePath(Sys.getenv("R_HOME")), echo = echo)
 }
 
 set_R_ARCH_user_variable <- function(echo = FALSE) {
@@ -146,7 +156,11 @@ set_R_ARCH_user_variable <- function(echo = FALSE) {
 }
 
 
-#' @export
+set_R_BIN_user_variable <- function(echo = FALSE) {
+  set_user_variable("R_BIN", normalizePath(R.home("bin")), echo = echo)
+}
+
+
 add_R_to_path <- function(force = FALSE, echo = FALSE) {
 
   if(can_find_R_on_PATH() && !force) {
@@ -154,7 +168,7 @@ add_R_to_path <- function(force = FALSE, echo = FALSE) {
     return(invisible())
   }
 
-  set_R_Home_user_variable(echo = echo)
+  set_R_HOME_user_variable(echo = echo)
   if (can_find_R_on_PATH() && !force) {
     message("R is already on the PATH")
     return(invisible())
@@ -166,11 +180,16 @@ add_R_to_path <- function(force = FALSE, echo = FALSE) {
     return(invisible())
   }
 
+  set_R_BIN_user_variable(echo = echo)
+  if (can_find_R_on_PATH() && !force) {
+    message("R is already on the PATH")
+    return(invisible())
+  }
 
   # we query the registry directly because we don't want variables like
-  # "%R_Home" expanded yet. Note, a user PATH is only expanded once, so you
+  # "%R_HOME" expanded yet. Note, a user PATH is only expanded once, so you
   # can't nest user variables. e.g. you can't add %R_PATH% and then define
-  # %R_PATH% as %R_Home%\\bin\\%R_ARCH% because %R_PATH% will not be expanded
+  # %R_PATH% as %R_HOME%\\bin\\%R_ARCH% because %R_PATH% will not be expanded
   # fully (or at all, really). This is different from system varialbes, which
   # are expaned recursively.
   current_user_path <- read_user_var_direct_from_registry("PATH")
@@ -178,10 +197,14 @@ add_R_to_path <- function(force = FALSE, echo = FALSE) {
   message("\nThe current user PATH Variable:")
   cat(pcnl(p('\t', current_user_path)), "\n\n")
 
-  message("Prepending %R_Home%\\bin\\%R_ARCH% to the PATH" )
+  message("Prepending %R_BIN% to the PATH" )
+  new_user_path <- unique(c("%R_BIN%", current_user_path ))
+  # message("Prepending %R_HOME%\\bin\\%R_ARCH% to the PATH" )
+  # new_user_path <- unique(c("%R_HOME%\\bin\\%R_ARCH%", current_user_path ))
 
-  new_user_path <- unique(c("%R_Home%\\bin\\%R_ARCH%", current_user_path ))
-  new_user_path <- p(new_user_path, collapse = ";")
+  # new_user_path <- p(new_user_path, collapse = ";")
+
+  new_user_path <- collapse(new_user_path, ";")
 
   # escape_percents
   new_user_path <- gsub("%", '^%', new_user_path, fixed = TRUE)
@@ -213,11 +236,11 @@ add_R_to_path <- function(force = FALSE, echo = FALSE) {
 
 }
 
-
+collapse <- function(x, collapse) paste(x, collapse = collapse)
 
 #   current_user_path <-
 #     c(
-#       "%R_Home%\\bin\\%R_ARCH%",
+#       "%R_HOME%\\bin\\%R_ARCH%",
 #       "C:\\Program Files\\RStudio\\bin\\pandoc",
 #       "C:\\Python27\\ArcGISx6410.4",
 #       "C:\\Python27\\ArcGISx6410.4\\Scripts",
@@ -230,18 +253,17 @@ add_R_to_path <- function(force = FALSE, echo = FALSE) {
 #       "C:\\Program Files\\ImageMagick-7.0.3-Q16"
 #     )
 #
-#   if("%R_Home%\\bin\\%R_ARCH%" %in% current_user_path) {
+#   if("%R_HOME%\\bin\\%R_ARCH%" %in% current_user_path) {
 #     message("R is already on the PATH")
 #     return(invisible())
 #   }
 
 
 
-#' @import yasp
-#' @export
-add_open_Rstudio_here_right_click_context_action <- function(echo = TRUE) {
+
+add_open_Rstudio_here_right_click_context_action <- function(force = FALSE, echo = TRUE) {
   key <- dbl_quote("HKEY_CURRENT_USER\\Software\\Classes\\directory\\Background\\shell\\Open Rstudio here\\command")
-  add_reg_key(key, data = "rstudio.exe", echo = echo)
+  add_reg_key(key, data = "rstudio.exe", force = force, echo = echo)
 }
 
 
@@ -287,16 +309,16 @@ add_pandoc_to_path <- function(pth_to_pandoc.exe = Sys.getenv("RSTUDIO_PANDOC"),
   # we need to call setx in order for a WM_SETTINGCHANGE to be broadcast.
   # doesn't matter with what, so just reset R_home
   # http://www.dowdandassociates.com/blog/content/howto-set-an-environment-variable-in-windows-command-line-and-registry/
-  set_R_Home_user_variable()
+  set_R_HOME_user_variable()
 }
 
 add_R_to_path <- function(force = FALSE, echo = FALSE) {
 
 
   # we query the registry directly because we don't want variables like
-  # "%R_Home" expanded yet. Note, a user PATH is only expanded once, so you
+  # "%R_HOME" expanded yet. Note, a user PATH is only expanded once, so you
   # can't nest user variables. e.g. you can't add %R_PATH% and then define
-  # %R_PATH% as %R_Home%\\bin\\%R_ARCH% because %R_PATH% will not be expanded
+  # %R_PATH% as %R_HOME%\\bin\\%R_ARCH% because %R_PATH% will not be expanded
   # fully (or at all, really). This is different from system varialbes, which
   # are expaned recursively.
   current_user_path <- read_user_var_direct_from_registry("PATH")
@@ -304,9 +326,9 @@ add_R_to_path <- function(force = FALSE, echo = FALSE) {
   message("\nThe current user PATH Variable:")
   cat(pcnl(p('\t', current_user_path)), "\n\n")
 
-  message("Prepending %R_Home%\\bin\\%R_ARCH% to the PATH" )
+  message("Prepending %R_BIN% to the PATH" )
 
-  new_user_path <- unique(c("%R_Home%\\bin\\%R_ARCH%", current_user_path ))
+  new_user_path <- unique(c("%R_BIN%", current_user_path ))
   new_user_path <- p(new_user_path, collapse = ";")
 
   # escape_percents
@@ -337,5 +359,25 @@ add_R_to_path <- function(force = FALSE, echo = FALSE) {
   message("The System PATH is:")
   cat(pcnl(p('\t', read_system_var_direct_from_registry("PATH"))), "\n\n")
 
-  set_R_Home_user_variable()
+  set_R_HOME_user_variable()
+}
+
+
+run_RSetReg.exe <- function(unset = FALSE, type =  c("both", "user", "system")) {
+  type <- match.arg(type)
+  cmd <- p0(R.home("bin"), "\\RSetReg.exe")
+  if(unset)
+    cmd <- p(cmd, "/U")
+
+  message("Running cmd:", cmd)
+
+  sys_cmd <- cmd
+  usr_cmd <- p(cmd, "/Personal")
+
+  if (type %in% c("user", "both"))
+    shell(usr_cmd)
+
+  if (type %in% c("system", "both"))
+    shell(sys_cmd)
+
 }
