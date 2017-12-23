@@ -28,9 +28,17 @@ devtools::install_github("t-kalinowski/windows")
 
 to use:
 ``` r
-windows::register()
+windows::register_all()
 ```
-*  This will add R to the path
+*  This will add R to the user path
 *  add the "Run Rscript" right click context menu for R files
 *  add the "Open Rstudio here" right click context for windows explorer windows
+
+Alternatively, if you only want some specific additions, these functions are 
+also exported.
+``` r
+add_R_to_path()
+add_run_Rscript_right_click_context_action()
+add_open_Rstudio_here_right_click_context_action()
+```
 
