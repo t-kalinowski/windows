@@ -88,7 +88,7 @@ add_R_to_path <- function(force = FALSE, echo = FALSE) {
   message("The System PATH is:")
   cat(pcnl(p('\t', read_system_var_direct_from_registry("PATH"))), "\n\n")
 
-  set_R_HOME_user_variable()
+  set_R_BIN_user_variable()
 }
 
 
